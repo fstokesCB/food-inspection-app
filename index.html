@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Food Inspection App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#2563eb" />
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 900px;
+      padding: 16px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 1.6rem;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      margin-bottom: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .row > div {
+      flex: 1 1 150px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .checkbox-item {
+      font-size: 0.85rem;
+    }
+
+    .checkbox-item input {
+      margin-right: 6px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: #6b7280;
+      padding: 4px 10px;
+      font-weight: 500;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .button-row-right {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .location-status {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: -4px;
+      margin-bottom: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      margin-left: 4px;
+    }
+
+    .pill-pass { background: #dcfce7; color: #166534; }
+    .pill-fail { background: #fee2e2; color: #991b1b; }
+    .pill-cond { background: #fef9c3; color: #92400e; }
+
+    .pill-risk-low { background: #e0f2fe; color: #075985; }
+    .pill-risk-med { background: #f97316; color: #fff7ed; }
+    .pill-risk-high { background: #b91c1c; color: #fee2e2; }
+
+    .inspection {
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 0;
+    }
+
+    .inspection:last-child {
+      border-bottom: none;
+    }
+
+    .inspection-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .inspection-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .inspection-meta {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .inspection-notes {
+      font-size: 0.85rem;
+      color: #374151;
+    }
+
+    .tag-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .small-text {
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+
+    .no-inspections {
+      font-size: 0.9rem;
+      color: #6b7280;
+      text-align: center;
+      padding: 12px 0;
+    }
+  </style>
+  <script>
+    // Register service worker for offline use
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('sw.js')
+          .catch(err => console.log('Service worker registration failed:', err));
+      });
+    }
+  </script>
+</head>
+<body>
+  <div class="app">
+    <h1>Food Inspection App</h1>
+    <div class="subtitle">GPS-enabled inspections stored on your device</div>
+
+    <!-- New Inspection Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2>New Inspection</h2>
+        <span id="inspection-count" class="small-text"></span>
+      </div>
+
+      <form id="inspectionForm">
+        <label for="establishmentName">Establishment name</label>
+        <input id="establishmentName" type="text" placeholder="e.g., Joe's Diner" required />
+
+        <div class="row">
+          <div>
+            <label for="inspectorName">Inspector</label>
+            <input id="inspectorName" type="text" placeholder="Your name" />
+          </div>
+          <div>
+            <label for="inspectionDate">Date</label>
+            <input id="inspectionDate" type="date" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="overallResult">Overall result</label>
+            <select id="overallResult">
+              <option value="pass">Pass</option>
+              <option value="conditional">Conditional</option>
+              <option value="fail">Fail</option>
+            </select>
+          </div>
+          <div>
+            <label for="riskLevel">Risk level</label>
+            <select id="riskLevel">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+
+        <label>Key issues</label>
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" id="issueTemps" /> Improper temperatures
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="issueHygiene" /> Poor hygiene / handwashing
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" id="issuePests" /> Evidence of pests
+          </label>
+        </div>
+
+        <label for="notes">Notes / violations</label>
+        <textarea id="notes" placeholder="Summarize major findings, critical violations, corrective actions, etc."></textarea>
+
+        <label>Location (GPS)</label>
+        <div class="button-row">
+          <button type="button" class="btn-secondary" id="getLocationBtn">Get current GPS location</button>
+          <button type="button" class="btn-ghost" id="clearLocationBtn">Clear</button>
+        </div>
+        <div class="location-status" id="locationStatus">No location captured yet.</div>
+        <div class="row">
+          <div>
+            <label for="latitude">Latitude</label>
+            <input id="latitude" type="text" readonly />
+          </div>
+          <div>
+            <label for="longitude">Longitude</label>
+            <input id="longitude" type="text" readonly />
+          </div>
+        </div>
+
+        <div class="button-row-right" style="margin-top:10px;">
+          <button type="submit" class="btn-primary" id="saveBtn">Save inspection</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Saved Inspections Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Saved Inspections</h2>
+        <div class="button-row-right">
+          <button type="button" class="btn-secondary" id="exportBtn">Export (JSON)</button>
+          <button type="button" class="btn-danger" id="clearAllBtn">Delete all</button>
+        </div>
+      </div>
+      <div id="inspectionList"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'food_inspections_v1';
+
+    const form = document.getElementById('inspectionForm');
+    const establishmentNameEl = document.getElementById('establishmentName');
+    const inspectorNameEl = document.getElementById('inspectorName');
+    const inspectionDateEl = document.getElementById('inspectionDate');
+    const overallResultEl = document.getElementById('overallResult');
+    const riskLevelEl = document.getElementById('riskLevel');
+    const issueTempsEl = document.getElementById('issueTemps');
+    const issueHygieneEl = document.getElementById('issueHygiene');
+    const issuePestsEl = document.getElementById('issuePests');
+    const notesEl = document.getElementById('notes');
+    const getLocationBtn = document.getElementById('getLocationBtn');
+    const clearLocationBtn = document.getElementById('clearLocationBtn');
+    const locationStatus = document.getElementById('locationStatus');
+    const latitudeEl = document.getElementById('latitude');
+    const longitudeEl = document.getElementById('longitude');
+    const inspectionListEl = document.getElementById('inspectionList');
+    const exportBtn = document.getElementById('exportBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const inspectionCountEl = document.getElementById('inspection-count');
+
+    let inspections = [];
+
+    function loadInspections() {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        inspections = data ? JSON.parse(data) : [];
+      } catch (e) {
+        inspections = [];
+      }
+      renderInspections();
+    }
+
+    function saveInspections() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(inspections));
+      renderInspections();
+    }
+
+    function setTodayIfEmpty() {
+      if (!inspectionDateEl.value) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        inspectionDateEl.value = `${yyyy}-${mm}-${dd}`;
+      }
+    }
+
+    function handleSubmit(event) {
+      event.preventDefault();
+      const name = establishmentNameEl.value.trim();
+      if (!name) {
+        alert("Establishment name is required.");
+        return;
+      }
+
+      const inspection = {
+        id: Date.now(),
+        establishmentName: name,
+        inspectorName: inspectorNameEl.value.trim() || null,
+        inspectionDate: inspectionDateEl.value || null,
+        overallResult: overallResultEl.value,
+        riskLevel: riskLevelEl.value,
+        issues: {
+          temps: issueTempsEl.checked,
+          hygiene: issueHygieneEl.checked,
+          pests: issuePestsEl.checked
+        },
+        notes: notesEl.value.trim() || null,
+        location: {
+          latitude: latitudeEl.value || null,
+          longitude: longitudeEl.value || null
+        },
+        createdAt: new Date().toISOString()
+      };
+
+      inspections.unshift(inspection);
+      saveInspections();
+      form.reset();
+      locationStatus.textContent = "No location captured yet.";
+      latitudeEl.value = "";
+      longitudeEl.value = "";
+      setTodayIfEmpty();
+    }
+
+    function renderInspections() {
+      inspectionListEl.innerHTML = "";
+
+      const count = inspections.length;
+      inspectionCountEl.textContent = count === 0
+        ? "No inspections yet"
+        : count === 1
+          ? "1 inspection saved"
+          : `${count} inspections saved`;
+
+      if (count === 0) {
+        inspectionListEl.innerHTML = '<div class="no-inspections">No inspections recorded yet.</div>';
+        return;
+      }
+
+      inspections.forEach((insp) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'inspection';
+
+        const header = document.createElement('div');
+        header.className = 'inspection-header';
+
+        const title = document.createElement('div');
+        title.className = 'inspection-title';
+        title.textContent = insp.establishmentName;
+
+        const resultPill = document.createElement('span');
+        resultPill.className = 'pill';
+        if (insp.overallResult === 'pass') {
+          resultPill.classList.add('pill-pass');
+          resultPill.textContent = 'Pass';
+        } else if (insp.overallResult === 'fail') {
+          resultPill.classList.add('pill-fail');
+          resultPill.textContent = 'Fail';
+        } else {
+          resultPill.classList.add('pill-cond');
+          resultPill.textContent = 'Conditional';
+        }
+        title.appendChild(resultPill);
+
+        header.appendChild(title);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-ghost';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', () => {
+          inspections = inspections.filter(i => i.id !== insp.id);
+          saveInspections();
+        });
+
+        header.appendChild(deleteBtn);
+
+        const meta = document.createElement('div');
+        meta.className = 'inspection-meta';
+        const dateText = insp.inspectionDate ? insp.inspectionDate : 'No date';
+        const inspectorText = insp.inspectorName || 'Unknown inspector';
+        meta.textContent = `${dateText} • ${inspectorText}`;
+
+        const tags = document.createElement('div');
+        tags.className = 'tag-group';
+
+        const riskPill = document.createElement('span');
+        riskPill.className = 'pill';
+        if (insp.riskLevel === 'low') {
+          riskPill.classList.add('pill-risk-low');
+          riskPill.textContent = 'Low risk';
+        } else if (insp.riskLevel === 'medium') {
+          riskPill.classList.add('pill-risk-med');
+          riskPill.textContent = 'Medium risk';
+        } else {
+          riskPill.classList.add('pill-risk-high');
+          riskPill.textContent = 'High risk';
+        }
+        tags.appendChild(riskPill);
+
+        if (insp.issues.temps) {
+          const tag = document.createElement('span');
+          tag.className = 'pill';
+          tag.textContent = 'Temps';
+          tags.appendChild(tag);
+        }
+        if (insp.issues.hygiene) {
+          const tag = document.createElement('span');
+          tag.className = 'pill';
+          tag.textContent = 'Hygiene';
+          tags.appendChild(tag);
+        }
+        if (insp.issues.pests) {
+          const tag = document.createElement('span');
+          tag.className = 'pill';
+          tag.textContent = 'Pests';
+          tags.appendChild(tag);
+        }
+
+        if (insp.location && insp.location.latitude && insp.location.longitude) {
+          const locTag = document.createElement('span');
+          locTag.className = 'pill';
+          locTag.textContent = `Lat: ${insp.location.latitude}, Lng: ${insp.location.longitude}`;
+          tags.appendChild(locTag);
+        }
+
+        const notes = document.createElement('div');
+        notes.className = 'inspection-notes';
+        if (insp.notes) {
+          notes.textContent = insp.notes;
+        } else {
+          notes.innerHTML = '<span class="small-text">No notes recorded.</span>';
+        }
+
+        wrapper.appendChild(header);
+        wrapper.appendChild(meta);
+        wrapper.appendChild(tags);
+        wrapper.appendChild(notes);
+
+        inspectionListEl.appendChild(wrapper);
+      });
+    }
+
+    function getLocation() {
+      if (!('geolocation' in navigator)) {
+        locationStatus.textContent = "Geolocation not supported on this device.";
+        return;
+      }
+
+      locationStatus.textContent = "Getting current GPS location...";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          latitudeEl.value = latitude.toFixed(6);
+          longitudeEl.value = longitude.toFixed(6);
+          locationStatus.textContent = "Location captured.";
+        },
+        (err) => {
+          console.error(err);
+          locationStatus.textContent = "Unable to get location: " + err.message;
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    function clearLocation() {
+      latitudeEl.value = "";
+      longitudeEl.value = "";
+      locationStatus.textContent = "No location captured yet.";
+    }
+
+    function exportInspections() {
+      if (!inspections.length) {
+        alert("No inspections to export.");
+        return;
+      }
+      const dataStr = JSON.stringify(inspections, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'food_inspections.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function clearAllInspections() {
+      if (!confirm("Delete ALL inspections from this device?")) return;
+      inspections = [];
+      saveInspections();
+    }
+
+    // Event listeners
+    form.addEventListener('submit', handleSubmit);
+    getLocationBtn.addEventListener('click', getLocation);
+    clearLocationBtn.addEventListener('click', clearLocation);
+    exportBtn.addEventListener('click', exportInspections);
+    clearAllBtn.addEventListener('click', clearAllInspections);
+
+    // Initialize
+    setTodayIfEmpty();
+    loadInspections();
+  </script>
+</body>
+</html>
