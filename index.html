@@ -232,6 +232,25 @@
       text-align: center;
       padding: 12px 0;
     }
+
+    .fulton-box {
+      border-radius: 12px;
+      padding: 10px;
+      background: #eff6ff;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+    }
+
+    .fulton-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .fulton-status {
+      font-size: 0.8rem;
+      color: #4b5563;
+      margin-top: 4px;
+    }
   </style>
   <script>
     // Register service worker for offline use
@@ -247,13 +266,27 @@
 <body>
   <div class="app">
     <h1>Food Inspection App</h1>
-    <div class="subtitle">GPS-enabled inspections stored on your device</div>
+    <div class="subtitle">GPS-enabled inspections with Fulton County data</div>
 
     <!-- New Inspection Card -->
     <div class="card">
       <div class="card-header">
         <h2>New Inspection</h2>
         <span id="inspection-count" class="small-text"></span>
+      </div>
+
+      <!-- Fulton County lookup -->
+      <div class="fulton-box">
+        <div class="fulton-title">Fulton County official lookup</div>
+        <label for="fultonSearch">Search Fulton (facility name)</label>
+        <input id="fultonSearch" type="text" placeholder="e.g., Joe's Diner" />
+        <div class="button-row">
+          <button type="button" class="btn-secondary" id="fultonSearchBtn">Search Fulton</button>
+          <button type="button" class="btn-ghost" id="fultonUseBtn" disabled>Use this result</button>
+        </div>
+        <div id="fultonStatus" class="fulton-status">
+          No Fulton result loaded yet.
+        </div>
       </div>
 
       <form id="inspectionForm">
@@ -287,6 +320,18 @@
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </select>
+          </div>
+        </div>
+
+        <!-- Official Fulton fields -->
+        <div class="row">
+          <div>
+            <label for="officialScore">Official Fulton score</label>
+            <input id="officialScore" type="text" placeholder="e.g., 95" />
+          </div>
+          <div>
+            <label for="officialInspectionDate">Official Fulton inspection date</label>
+            <input id="officialInspectionDate" type="date" />
           </div>
         </div>
 
@@ -345,6 +390,9 @@
   <script>
     const STORAGE_KEY = 'food_inspections_v1';
 
+    // Fulton API (open data)
+    const FULTON_API = 'https://data.fultoncountyga.gov/resource/w896-7wba.json';
+
     const form = document.getElementById('inspectionForm');
     const establishmentNameEl = document.getElementById('establishmentName');
     const inspectorNameEl = document.getElementById('inspectorName');
@@ -365,7 +413,17 @@
     const clearAllBtn = document.getElementById('clearAllBtn');
     const inspectionCountEl = document.getElementById('inspection-count');
 
+    const officialScoreEl = document.getElementById('officialScore');
+    const officialInspectionDateEl = document.getElementById('officialInspectionDate');
+
+    // Fulton UI
+    const fultonSearchEl = document.getElementById('fultonSearch');
+    const fultonSearchBtn = document.getElementById('fultonSearchBtn');
+    const fultonUseBtn = document.getElementById('fultonUseBtn');
+    const fultonStatusEl = document.getElementById('fultonStatus');
+
     let inspections = [];
+    let lastFultonResult = null;
 
     function loadInspections() {
       try {
@@ -417,15 +475,23 @@
           latitude: latitudeEl.value || null,
           longitude: longitudeEl.value || null
         },
+        officialFulton: {
+          score: officialScoreEl.value.trim() || null,
+          inspectionDate: officialInspectionDateEl.value || null
+        },
         createdAt: new Date().toISOString()
       };
 
       inspections.unshift(inspection);
       saveInspections();
+
       form.reset();
       locationStatus.textContent = "No location captured yet.";
       latitudeEl.value = "";
       longitudeEl.value = "";
+      lastFultonResult = null;
+      fultonStatusEl.textContent = "No Fulton result loaded yet.";
+      fultonUseBtn.disabled = true;
       setTodayIfEmpty();
     }
 
@@ -530,6 +596,21 @@
           tags.appendChild(locTag);
         }
 
+        // Official Fulton info
+        if (insp.officialFulton && (insp.officialFulton.score || insp.officialFulton.inspectionDate)) {
+          const fultonTag = document.createElement('span');
+          fultonTag.className = 'pill';
+          fultonTag.textContent = `Fulton score: ${insp.officialFulton.score || 'N/A'}`;
+          tags.appendChild(fultonTag);
+
+          if (insp.officialFulton.inspectionDate) {
+            const fultonDateTag = document.createElement('span');
+            fultonDateTag.className = 'pill';
+            fultonDateTag.textContent = `Fulton date: ${insp.officialFulton.inspectionDate}`;
+            tags.appendChild(fultonDateTag);
+          }
+        }
+
         const notes = document.createElement('div');
         notes.className = 'inspection-notes';
         if (insp.notes) {
@@ -602,12 +683,91 @@
       saveInspections();
     }
 
+    // --- Fulton lookup functions ---
+
+    function formatFultonDate(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return value;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    async function searchFulton() {
+      const name = fultonSearchEl.value.trim();
+      if (!name) {
+        alert("Enter a facility name to search Fulton.");
+        return;
+      }
+
+      fultonStatusEl.textContent = "Searching Fulton open data...";
+      fultonUseBtn.disabled = true;
+      lastFultonResult = null;
+
+      try {
+        const url = FULTON_API + "?$limit=1&$order=inspection_date DESC&$q=" + encodeURIComponent(name);
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          fultonStatusEl.textContent = "No Fulton results found for that name.";
+          return;
+        }
+
+        const r = data[0];
+        lastFultonResult = r;
+
+        const facility = r.facility || "(no facility name)";
+        const address = r.address || "";
+        const city = r.city || "";
+        const score = r.score || "N/A";
+        const inspDate = formatFultonDate(r.inspection_date);
+
+        fultonStatusEl.innerHTML =
+          `<strong>${facility}</strong><br>` +
+          `${address} ${city}<br>` +
+          `Latest inspection: ${inspDate || "N/A"} • Score: ${score}`;
+
+        fultonUseBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        fultonStatusEl.textContent = "Error talking to Fulton API: " + err.message;
+      }
+    }
+
+    function useFultonResult() {
+      if (!lastFultonResult) return;
+      const r = lastFultonResult;
+
+      if (r.facility && !establishmentNameEl.value.trim()) {
+        establishmentNameEl.value = r.facility;
+      }
+
+      if (r.score) {
+        officialScoreEl.value = r.score;
+      }
+
+      const inspDate = formatFultonDate(r.inspection_date);
+      if (inspDate) {
+        officialInspectionDateEl.value = inspDate;
+      }
+
+      fultonStatusEl.textContent += " (copied into form)";
+    }
+
     // Event listeners
     form.addEventListener('submit', handleSubmit);
     getLocationBtn.addEventListener('click', getLocation);
     clearLocationBtn.addEventListener('click', clearLocation);
     exportBtn.addEventListener('click', exportInspections);
     clearAllBtn.addEventListener('click', clearAllInspections);
+
+    fultonSearchBtn.addEventListener('click', searchFulton);
+    fultonUseBtn.addEventListener('click', useFultonResult);
 
     // Initialize
     setTodayIfEmpty();
